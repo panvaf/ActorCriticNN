@@ -3,9 +3,9 @@ Associative network class.
 """
 
 import numpy as np
-import util
+import utilities as util
 
-# Define dynamics of associative network
+# Main associative network class
 
 class assoc_net:
     
@@ -21,9 +21,14 @@ class assoc_net:
         self.n_fb = int(params['n_fb'])
         self.eta = params['eta']
         self.dale = params['dale']
-        self.I_inh = params['I_inh']
         self.rule = params['rule']
+        self.tau_lp = params['tau_lp']
+        self.d = params['d']
         self.alpha = self.dt/self.tau_s
+        
+        self.g_inh = 3*np.sqrt(1/self.n_neu)
+        self.E_e = 14/3
+        self.E_i = -1/3
         
         # Weights
         self.W_rec = np.zeros((self.n_neu,self.n_neu))
@@ -37,51 +42,62 @@ class assoc_net:
         self.Delta = np.zeros((self.n_assoc,self.n_assoc+self.n_in))
         self.PSP = np.zeros(self.n_assoc+self.n_in)
         self.I_PSP = np.zeros(self.n_assoc+self.n_in)
+        self.PSP_lp = np.zeros(self.n_assoc+self.n_in)
         self.g_e = np.zeros(self.n_assoc)
         self.g_i = np.zeros(self.n_assoc)
         self.r = np.random.uniform(0,.15,self.n_assoc)
+        self.V_ss = np.zeros(self.n_assoc)
+        self.r_hat = np.zeros(self.n_assoc)
         
     
     
-    def dynamics(self,I_ff,I_fb,W_rec,W_ff,W_fb,tau_l=20,gD=.2,gL=.1,E_e=14/3,E_i=-1/3):
+    def dynamics(self,I_ff,I_fb,tau_l=20,gD=.2,gL=.1):
         # Network dynamics
     
-        # units in ms or ms^-1
+        # Constants
         c = gD/gL
+        p = gD/(gD+gL)
         
         # Create noise that will be added to all origins of input
         n = np.random.normal(0,self.n_sigma,self.n_neu)
         n_d = np.random.normal(0,self.n_sigma,self.n_neu)
         
         # input to the dendrites
-        self.I_d += (- self.I_d + np.dot(W_rec,self.r) + np.dot(W_fb,I_fb) + self.I_inh + n_d)*self.alpha
+        self.I_d += (- self.I_d + np.dot(self.W_rec,self.r) + np.dot(self.W_fb,I_fb) + n_d)*self.alpha
         
         # Dentritic potential is a low-pass filtered version of the dentritic current
         self.V_d += (-self.V_d+self.I_d)*self.dt/tau_l
         
         # Time-dependent somatic conductances
-        self.g_e += (-self.g_e + np.dot(W_ff.clip(min=0),I_ff))*self.alpha
-        self.g_i += (-self.g_i - np.dot(W_ff.clip(max=0),I_ff))*self.alpha
+        self.g_e += (-self.g_e + np.dot(self.W_ff.clip(min=0),I_ff))*self.alpha
+        self.g_i += (-self.g_i - np.dot(self.W_ff.clip(max=0),I_ff))*self.alpha
         
         # Input to the soma (teacher signal)
-        I = self.g_e*(E_e-self.V) + (self.g_i+self.g_sh)*(E_i-self.V)
+        I = self.g_e*(self.E_e-self.V) + (self.g_i+self.g_sh)*(self.E_i-self.V)
         
         # Somatic voltage
         self.V += (-self.V + c*(self.V_d-self.V) + I/gL + n)*self.dt/tau_l
         
         # Firing rate
-        r = util.act_fun(self.V,self.fun)
+        self.r = util.act_fun(self.V,self.fun)
         
-        # Dendritic prediction of somatic voltage
-        V_ss = self.V_d*gD/(gD+gL)
+        # Dendritic prediction of somatic voltage & firing rate
+        self.V_ss = p * self.V_d
+        self.r_hat = util.act_fun(self.V_ss,self.fun)
         
         # Discrepancy between dendritic prediction and actual firing rate
-        self.error = r - util.act_fun(V_ss,self.fun)
+        self.error = self.r - self.r_hat
         
         # Compute PSP for every dendritic input to associative neurons
-        r_in = np.concatenate((r,I_fb))
+        r_in = np.concatenate((self.r,I_fb))
         self.I_PSP += (- self.I_PSP + r_in)*self.alpha
         self.PSP += (- self.PSP + self.I_PSP)*self.dt/tau_l
+        
+        # Low pass filter PSP for bootstrapping
+        if self.tau_lp is not None:
+            self.PSP_lp += (- self.PSP_lp + self.PSP)*self.dt/self.tau_lp
+        else:
+            self.PSP_lp = self.PSP
 
 
 
@@ -89,7 +105,7 @@ class assoc_net:
         # Learning dynamics
         
         # Weight update
-        PI = np.outer(self.error,self.PSP)
+        PI = self.d * np.outer(self.r,self.PSP_lp) - np.outer(self.r_hat,self.PSP)
        
         # Low-pass filter weight updates
         if filt:
@@ -110,7 +126,7 @@ class assoc_net:
             self.W_rec[self.W_rec<0] = 0
 
 
-    def ss_fr(self,I_ff,g_inh,fun,E_e=14/3,E_i=-1/3):
+    def ss_fr(self,I_ff):
         # Find instructed steady-state firing rate for given feedforward input
         
         # Steady-state somatic conductances
@@ -118,9 +134,9 @@ class assoc_net:
         g_i = - np.dot(self.W_ff.clip(max=0),I_ff)
         
         # Matching potential (equilibrium)
-        V_m = (g_e*E_e+(g_i+g_inh)*E_i)/(g_e+g_i+g_inh)
+        V_m = (g_e*self.E_e+(g_i+self.g_inh)*self.E_i)/(g_e+g_i+self.g_inh)
         
         # Teacher-imposed firing rate
-        r_m = util.act_fun(V_m,fun)
+        r_m = util.act_fun(V_m,self.fun)
         
         return r_m, V_m
