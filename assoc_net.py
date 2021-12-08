@@ -17,8 +17,8 @@ class assoc_net:
         self.n_sigma = params['n_sigma']
         self.n_neu = int(params['n_assoc'])
         self.tau_s = params['tau_s']
-        self.n_in = int(params['n_in'])
-        self.n_fb = int(params['n_fb'])
+        self.n_ff = int(params['n_in'])
+        self.n_fb = int(params['n_pl'])
         self.eta = params['eta']
         self.dale = params['dale']
         self.rule = params['rule']
@@ -32,17 +32,17 @@ class assoc_net:
         
         # Weights
         self.W_rec = np.zeros((self.n_neu,self.n_neu))
-        self.W_ff = np.ones((self.n_neu,self.n_in))
+        self.W_ff = np.ones((self.n_neu,self.n_ff))
         self.W_fb = np.random.normal(0,np.sqrt(1/self.n_neu),(self.n_assoc,self.n_fb))
         
         # Initial conditions
         self.V_d = np.random.uniform(0,1,self.n_assoc) 
         self.V = np.random.uniform(0,1,self.n_assoc)
         self.I_d = np.zeros(self.n_assoc)
-        self.Delta = np.zeros((self.n_assoc,self.n_assoc+self.n_in))
-        self.PSP = np.zeros(self.n_assoc+self.n_in)
-        self.I_PSP = np.zeros(self.n_assoc+self.n_in)
-        self.PSP_lp = np.zeros(self.n_assoc+self.n_in)
+        self.Delta = np.zeros((self.n_assoc,self.n_assoc+self.n_ff))
+        self.PSP = np.zeros(self.n_assoc+self.n_ff)
+        self.I_PSP = np.zeros(self.n_assoc+self.n_ff)
+        self.PSP_lp = np.zeros(self.n_assoc+self.n_ff)
         self.g_e = np.zeros(self.n_assoc)
         self.g_i = np.zeros(self.n_assoc)
         self.r = np.random.uniform(0,.15,self.n_assoc)
