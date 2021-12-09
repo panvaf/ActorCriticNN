@@ -126,6 +126,7 @@ class assoc_net:
             self.W_rec[self.W_rec<0] = 0
 
 
+
     def ss_fr(self,I_ff):
         # Find instructed steady-state firing rate for given feedforward input
         
