@@ -1,11 +1,11 @@
 """
-Associative network class.
+Critic network.
 """
 
 import numpy as np
 import utilities as util
 
-# Main associative network class
+# Associative network class
 
 class assoc_net:
     

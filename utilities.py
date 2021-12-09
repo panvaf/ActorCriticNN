@@ -33,26 +33,6 @@ def rect(x,s=.1):
     x[x>1] = 1
     return s*x
 
-
-# Place cell class
-
-class place_cell:
-    
-    def __init__(self,params):
-        # Initialize place cell
-        
-        self.x0 = params['x0']
-        self.y0 = params['y0']
-        self.sigma = params['sigma']
-        self.s = params['s']
-        
-    
-    def fr(self,x,y):
-        
-        d_sq = (x-self.x0)**2 + (y-self.y0)**2
-        self.r = self.s * np.exp(-d_sq/(2*self.sigma))
-        
-        return self.r
     
     
 # Returns filename from network parameters
