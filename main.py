@@ -3,7 +3,6 @@ Main classes.
 """
 
 import numpy as np
-import utilities as util
 from critic_net import assoc_net
 from state_net import place_net
 from time import time
@@ -25,17 +24,18 @@ class ActorCriticNN:
         self.v = params['v']
         self.every_perc = params['every_perc']
         self.est_every = params['est_every']
+        self.x_dim = params['x_dim']
+        self.n_time = int(self.x_dim/self.v/self.dt)
+        self.train = params['train']
         
         # Initialize subnetworks
         self.CriticNet = assoc_net(params)
         self.StateNet = place_net(params)
-
+        
     
     def simulate(self):
         # Simulation method
         start = time()
-        
-        n_time = int(params['x_dim']/self.v/self.dt)
         
         # Save average errors across simulation
         batch_size = int(self.every_perc/100*self.n_trial)
@@ -45,43 +45,44 @@ class ActorCriticNN:
         
         # Store network estimates in single trial level
         if self.est_every:
-            self.r = np.zeros(tuple([self.n_trial])+self.CS.shape)
-            self.Phi_est = np.zeros(tuple([self.n_trial])+self.Phi.shape)
-            self.R_est = np.zeros(tuple([self.n_trial])+self.R.shape)
+            self.r = np.zeros((self.n_trial,self.n_time,self.n_assoc))
         
-        for j, trial in enumerate(trials):
+        for j in range(self.n_trial):
+            
+            # Initialize location
+            self.x = 0; self.y = 0
             
             # Inputs to the network
-            I_ff = np.zeros((self.n_time,self.n_in)); I_ff[self.n_US_ap:,:] = self.US[trial,:]
-            g_inh = np.zeros(self.n_time); g_inh[self.n_US_ap:] = self.g_inh
-            R = np.zeros(self.n_time); R[self.n_US_ap+n_trans] = self.R[trial]
-            R_est = 0
-            
-            I_fb = np.zeros((self.n_time,self.n_fb)); I_fb[0:self.n_CS_disap,:] = self.CS[trial,:]
+            I_ff = np.zeros((self.n_time,self.n_in))
             
             # Store errors after US appears, omitting transduction delays
-            err = np.zeros((self.n_time-self.n_US_ap,self.n_assoc))
+            err = np.zeros((self.n_time,self.n_assoc))
             
             for i in range(1,self.n_time):
                 
+                # Update location
+                self.x += self.v * self.dt
+                
+                # Update state
+                r_st = self.StateNet(self.x,self.y)
+                I_fb = r_st.flatten()
+                
+                # Feedforward input
+                if self.x> .9 * self.x_dim:
+                    I_ff = .1
+                else:
+                    I_ff = 0
+                
                 # One-step forward dynamics
-                r, V, I_d, V_d, error, PSP, I_PSP, g_e, g_i  = assoc_net.dynamics(r,
-                                I_ff[i,:],I_fb[i,:],self.W_rec,self.W_ff,
-                                self.W_fb,V,I_d,V_d,PSP,I_PSP,g_e,g_i,self.dt_ms,
-                                self.n_sigma,g_inh[i],self.I_inh,self.fun,self.tau_s)
+                self.CriticNet.dynamics(I_ff,I_fb)
                 
                 # Weight modification
                 if self.train:
-                    self.W_rec, self.W_fb = assoc_net.learn_rule(self.W_rec,
-                                self.W_fb,r,error,Delta,PSP,eta,self.dt_ms,
-                                self.dale,self.S,self.filter,self.rule,self.norm)
-                    if i>self.n_US_ap+n_trans:
-                        err[i-self.n_US_ap-n_trans,:] = error
-                        
-            # Save network estimates after each trial
-            if self.est_every:
-                self.US_est[j,:], self.Phi_est[j,:] = self.est_US()
-                self.R_est[j,:], _ = self.est_R(self.US_est[j,:])
+                    self.CriticNet.learn_rule()
+                
+                # Save information
+                err[i,:] = self.CriticNet.error
+                self.r[j,i,:] = self.CriticNet.r
             
             # Obtain average error at the end of every batch of trials
             if (j % batch_size == 0):
@@ -95,8 +96,3 @@ class ActorCriticNN:
         end = time()
         self.sim_time = round((end-start)/3600,2)
         print("The simulation ran for {} hours".format(self.sim_time))
-        
-        # Final network estimates
-        if not self.est_every:
-            self.US_est, self.Phi_est = self.est_US()
-            self.R_est, _ = self.est_R(self.US_est)
