@@ -15,9 +15,9 @@ params = {
     'dt': 1e-3,          # euler integration step size
     'n_assoc': 1,       # number of associative neurons
     'n_sigma': 0,        # input noise standard deviation
-    'tau_s': 10,         # synaptic delay in the network, in ms
+    'tau_s': 100,        # synaptic delay in the network, in ms
     'n_in': 1,           # size of patterns
-    'eta': 5e-3,         # learning rate
+    'eta': 1,         # learning rate
     'n_trial': 1e2,      # number of trials
     'train': True,       # whether to train network or not
     'W_rec': None,       # recurrent weights of associative network
@@ -35,8 +35,8 @@ params = {
     'sigma': 1,          # spatial extent of place cell receptive field
     'f_max': .1,         # maximum firing rate, in kHz
     'neu_den': 1,        # lattice density of place cells, in neurons/m
-    'tau_lp': 10,        # time constant of additional PSP filtering, in ms
-    'tau_eff': 600      # effective bootstrapping time constant, in ms
+    'tau_lp': 50,        # time constant of additional PSP filtering, in ms
+    'tau_eff': 1500      # effective bootstrapping time constant, in ms
     }
 
 # Save directory

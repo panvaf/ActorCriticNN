@@ -13,7 +13,7 @@ class assoc_net:
         # Initialize network
         
         # Constants
-        self.dt = params['dt']
+        self.dt_ms = params['dt']*1e3
         self.n_sigma = params['n_sigma']
         self.n_neu = int(params['n_assoc'])
         self.tau_s = params['tau_s']
@@ -26,7 +26,7 @@ class assoc_net:
         self.tau_eff = params['tau_eff']
         self.fun = params['fun']
         self.d = 1 - self.tau_lp/self.tau_eff
-        self.alpha = self.dt/self.tau_s
+        self.alpha = self.dt_ms/self.tau_s
         
         self.g_inh = 0
         self.E_e = 14/3
@@ -35,7 +35,10 @@ class assoc_net:
         # Weights
         self.W_rec = np.zeros((self.n_neu,self.n_neu))
         self.W_ff = np.ones((self.n_neu,self.n_ff))
-        self.W_fb = np.random.normal(0,np.sqrt(1/self.n_neu),(self.n_neu,self.n_fb))
+        self.W_fb = np.random.normal(0,np.sqrt(1/self.n_neu),(self.n_neu,self.n_fb))        
+    
+    
+    def reset(self):
         
         # Initial conditions
         self.V_d = np.random.uniform(0,1,self.n_neu) 
@@ -52,7 +55,6 @@ class assoc_net:
         self.r_hat = np.zeros(self.n_neu)
         
     
-    
     def dynamics(self,I_ff,I_fb,tau_l=20,gD=.2,gL=.1):
         # Network dynamics
     
@@ -68,7 +70,7 @@ class assoc_net:
         self.I_d += (- self.I_d + np.dot(self.W_rec,self.r) + np.dot(self.W_fb,I_fb) + n_d)*self.alpha
         
         # Dentritic potential is a low-pass filtered version of the dentritic current
-        self.V_d += (-self.V_d+self.I_d)*self.dt/tau_l
+        self.V_d += (-self.V_d+self.I_d)*self.dt_ms/tau_l
         
         # Time-dependent somatic conductances
         self.g_e += (-self.g_e + np.dot(self.W_ff.clip(min=0),I_ff))*self.alpha
@@ -78,7 +80,7 @@ class assoc_net:
         I = self.g_e*(self.E_e-self.V) + (self.g_i+self.g_inh)*(self.E_i-self.V)
         
         # Somatic voltage
-        self.V += (-self.V + c*(self.V_d-self.V) + I/gL + n)*self.dt/tau_l
+        self.V += (-self.V + c*(self.V_d-self.V) + I/gL + n)*self.dt_ms/tau_l
         
         # Firing rate
         self.r = util.act_fun(self.V,self.fun)
@@ -93,11 +95,11 @@ class assoc_net:
         # Compute PSP for every dendritic input to associative neurons
         r_in = np.concatenate((self.r,I_fb))
         self.I_PSP += (- self.I_PSP + r_in)*self.alpha
-        self.PSP += (- self.PSP + self.I_PSP)*self.dt/tau_l
+        self.PSP += (- self.PSP + self.I_PSP)*self.dt_ms/tau_l
         
         # Low pass filter PSP for bootstrapping
         if self.tau_lp is not None:
-            self.PSP_lp += (- self.PSP_lp + self.PSP)*self.dt/self.tau_lp
+            self.PSP_lp += (- self.PSP_lp + self.PSP)*self.dt_ms/self.tau_lp
         else:
             self.PSP_lp = self.PSP
 
@@ -111,10 +113,10 @@ class assoc_net:
        
         # Low-pass filter weight updates
         if filt:
-            self.Delta += (PI - self.Delta)*self.dt/tau_d
+            self.Delta += (PI - self.Delta)*self.dt_ms/tau_d
         else:
             self.Delta = PI
-        dW = self.eta*self.Delta*self.dt
+        dW = self.eta*self.Delta*self.dt_ms
             
         # Separate matrices
         dW_rec, dW_fb = np.split(dW,[self.n_neu],axis=1)

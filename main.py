@@ -50,8 +50,9 @@ class ActorCriticNN:
         
         for j in range(self.n_trial):
             
-            # Initialize location
+            # Initialize
             self.x = 0; self.y = 0
+            self.CriticNet.reset()
             
             # Store errors
             err = np.zeros((self.n_time,self.CriticNet.n_neu))
