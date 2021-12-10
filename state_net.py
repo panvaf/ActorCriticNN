@@ -15,7 +15,7 @@ class place_net:
         
         # Constants
         self.sigma = params['sigma']
-        self.s = params['s']
+        self.f_max = params['f_max']
         self.x_dim = params['x_dim']
         self.y_dim = params['y_dim']
         self.neu_den = params['neu_den']
@@ -39,6 +39,6 @@ class place_net:
         # Returns firing rates from x,y location
         
         d_sq = (x-self.x0)**2 + (y-self.y0)**2
-        self.r = self.s * np.exp(-d_sq/(2*self.sigma))
+        self.r = self.f_max * np.exp(-d_sq/(2*self.sigma))
         
         return self.r

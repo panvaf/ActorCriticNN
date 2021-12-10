@@ -23,31 +23,33 @@ class assoc_net:
         self.dale = params['dale']
         self.rule = params['rule']
         self.tau_lp = params['tau_lp']
-        self.d = params['d']
+        self.tau_eff = params['tau_eff']
+        self.fun = params['fun']
+        self.d = 1 - self.tau_lp/self.tau_eff
         self.alpha = self.dt/self.tau_s
         
-        self.g_inh = 3*np.sqrt(1/self.n_neu)
+        self.g_inh = 0
         self.E_e = 14/3
         self.E_i = -1/3
         
         # Weights
         self.W_rec = np.zeros((self.n_neu,self.n_neu))
         self.W_ff = np.ones((self.n_neu,self.n_ff))
-        self.W_fb = np.random.normal(0,np.sqrt(1/self.n_neu),(self.n_assoc,self.n_fb))
+        self.W_fb = np.random.normal(0,np.sqrt(1/self.n_neu),(self.n_neu,self.n_fb))
         
         # Initial conditions
-        self.V_d = np.random.uniform(0,1,self.n_assoc) 
-        self.V = np.random.uniform(0,1,self.n_assoc)
-        self.I_d = np.zeros(self.n_assoc)
-        self.Delta = np.zeros((self.n_assoc,self.n_assoc+self.n_ff))
-        self.PSP = np.zeros(self.n_assoc+self.n_ff)
-        self.I_PSP = np.zeros(self.n_assoc+self.n_ff)
-        self.PSP_lp = np.zeros(self.n_assoc+self.n_ff)
-        self.g_e = np.zeros(self.n_assoc)
-        self.g_i = np.zeros(self.n_assoc)
-        self.r = np.random.uniform(0,.15,self.n_assoc)
-        self.V_ss = np.zeros(self.n_assoc)
-        self.r_hat = np.zeros(self.n_assoc)
+        self.V_d = np.random.uniform(0,1,self.n_neu) 
+        self.V = np.random.uniform(0,1,self.n_neu)
+        self.I_d = np.zeros(self.n_neu)
+        self.Delta = np.zeros((self.n_neu,self.n_neu+self.n_fb))
+        self.PSP = np.zeros(self.n_neu+self.n_fb)
+        self.I_PSP = np.zeros(self.n_neu+self.n_fb)
+        self.PSP_lp = np.zeros(self.n_neu+self.n_fb)
+        self.g_e = np.zeros(self.n_neu)
+        self.g_i = np.zeros(self.n_neu)
+        self.r = np.random.uniform(0,.15,self.n_neu)
+        self.V_ss = np.zeros(self.n_neu)
+        self.r_hat = np.zeros(self.n_neu)
         
     
     
@@ -73,7 +75,7 @@ class assoc_net:
         self.g_i += (-self.g_i - np.dot(self.W_ff.clip(max=0),I_ff))*self.alpha
         
         # Input to the soma (teacher signal)
-        I = self.g_e*(self.E_e-self.V) + (self.g_i+self.g_sh)*(self.E_i-self.V)
+        I = self.g_e*(self.E_e-self.V) + (self.g_i+self.g_inh)*(self.E_i-self.V)
         
         # Somatic voltage
         self.V += (-self.V + c*(self.V_d-self.V) + I/gL + n)*self.dt/tau_l
