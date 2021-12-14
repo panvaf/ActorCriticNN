@@ -35,12 +35,12 @@ params = {
     'sigma': 1,          # spatial extent of place cell receptive field
     'f_max': .1,         # maximum firing rate, in kHz
     'neu_den': 1,        # lattice density of place cells, in neurons/m
-    'tau_lp': 50,        # time constant of additional PSP filtering, in ms
+    'tau_lp': 100,        # time constant of additional PSP filtering, in ms
     'tau_eff': 1500      # effective bootstrapping time constant, in ms
     }
 
 # Save directory
-data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
+data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 filename = util.filename(params) + 'LinTrack'
 
 # Run simulation

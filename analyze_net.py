@@ -8,6 +8,7 @@ import pickle
 import utilities as util
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MultipleLocator
 
 # Determine parameters to load the appropriate network
 params = {
@@ -34,13 +35,13 @@ params = {
     'sigma': 1,          # spatial extent of place cell receptive field
     'f_max': .1,         # maximum firing rate, in kHz
     'neu_den': 1,        # lattice density of place cells, in neurons/m
-    'tau_lp': 50,        # time constant of additional PSP filtering, in ms
+    'tau_lp': 100,        # time constant of additional PSP filtering, in ms
     'tau_eff': 1500      # effective bootstrapping time constant, in ms
     }
 
 
 # Load network
-data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
+data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 filename = util.filename(params) + 'LinTrack'
 
 
@@ -62,20 +63,59 @@ plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
 
 
 # Obtain results
-r = net.r
-t = np.linspace(0,params['x_dim']/params['v'],np.size(r,2))
+if net.est_every:
+    
+    # Plot ramping activity as reward is approached in start vs. end of learning
+    
+    r = net.r * 1000
+    t_max = params['x_dim']/params['v']
+    t = np.linspace(0,t_max,np.size(r,1))
+    
+    fig, ax = plt.subplots(figsize=(1.5,1.5))
+    ax.plot(t,r[0,:,0])
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Firing rate (spikes/s)')
+    ax.set_title('Trial 1')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_position(('data', -.05*t_max))
+    ax.spines['bottom'].set_position(('data', -.07*np.max(r[0,:,0])))
+    ax.xaxis.set_major_locator(MultipleLocator(1))
+    ax.xaxis.set_minor_locator(MultipleLocator(.5))
+    ax.yaxis.set_major_locator(MultipleLocator(20))
+    ax.yaxis.set_minor_locator(MultipleLocator(10))
+    
+    
+    fig, ax = plt.subplots(figsize=(1.5,1.5))
+    ax.plot(t,r[99,:,0])
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Firing rate (spikes/s)')
+    ax.set_title('Trial 100')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_position(('data', -.05*t_max))
+    ax.spines['bottom'].set_position(('data', -.07*np.max(r[-1,:,0])))
+    ax.xaxis.set_major_locator(MultipleLocator(1))
+    ax.xaxis.set_minor_locator(MultipleLocator(.5))
+    ax.yaxis.set_major_locator(MultipleLocator(20))
+    ax.yaxis.set_minor_locator(MultipleLocator(10))
+    
+    plt.savefig('response.png',bbox_inches='tight',format='png',dpi=300)
 
-plt.plot(t,1000*r[0,:,0])
-plt.xlabel('Time (s)')
-plt.ylabel('Firing rate (spikes/s)')
-plt.title('Trial 1')
-plt.show()
+W_fb = net.CriticNet.W_fb
+x = np.linspace(0,params['x_dim'],np.size(W_fb,1))
 
-plt.plot(t,1000*r[99,:,0])
-plt.xlabel('Time (s)')
-plt.ylabel('Firing rate (spikes/s)')
-plt.title('Trial 100')
-plt.show()
+fig, ax = plt.subplots(figsize=(1.5,1.5))
+ax.plot(x,W_fb.T)
+ax.set_xlabel('X coordinate (m)')
+ax.set_ylabel('Weight (1/s)')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', -.05*params['x_dim']))
+ax.spines['bottom'].set_position(('data', -.15*np.max(W_fb)))
+ax.xaxis.set_major_locator(MultipleLocator(2))
+ax.xaxis.set_minor_locator(MultipleLocator(1))
+ax.yaxis.set_major_locator(MultipleLocator(5))
+ax.yaxis.set_minor_locator(MultipleLocator(2.5))
 
-#plt.savefig('Cond.png',bbox_inches='tight',format='png',dpi=300)
-#plt.savefig('Cond.eps',bbox_inches='tight',format='eps',dpi=300)
+plt.savefig('weights.png',bbox_inches='tight',format='png',dpi=300)
